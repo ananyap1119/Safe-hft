@@ -1,0 +1,44 @@
+# SAFE-HFT — pinned dependencies
+# Tested on Python 3.10 / 3.11 (Windows and Linux).
+# Install: pip install -r requirements.txt
+#
+# IMPORTANT: OmniSafe requires torch>=2.0.0 and is not compatible with
+# stable-baselines3's optional torch constraints. Install in this order:
+#   1. pip install torch==2.3.1  (or CUDA build from pytorch.org)
+#   2. pip install -r requirements.txt
+
+# ── Core ML / RL ──────────────────────────────────────────────────────────────
+torch==2.3.1
+omnisafe==0.4.0
+stable-baselines3==2.3.2
+gymnasium==0.29.1
+
+# ── Data science ──────────────────────────────────────────────────────────────
+numpy==1.26.4
+pandas==2.2.2
+scipy==1.13.1
+scikit-learn==1.5.0
+pyarrow>=18.0.0          # parquet I/O  (16.x has no Python 3.13 wheel)
+
+# ── NSE data (Kite Connect) ───────────────────────────────────────────────────
+kiteconnect==5.0.1       # Zerodha Kite Connect Python client
+python-dotenv==1.0.1     # .env file loading
+
+# ── Experiment tracking ───────────────────────────────────────────────────────
+wandb==0.17.0
+
+# ── Visualisation ─────────────────────────────────────────────────────────────
+matplotlib==3.9.0
+plotly==5.22.0
+kaleido==0.2.1           # Required by plotly for static image export
+
+# ── Config & utilities ────────────────────────────────────────────────────────
+pyyaml==6.0.1
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.2.2
+pytest-cov==5.0.0
+
+# ── Notebook ──────────────────────────────────────────────────────────────────
+jupyter==1.0.0
+ipykernel==6.29.4

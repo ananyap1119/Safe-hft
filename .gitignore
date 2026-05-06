@@ -1,0 +1,15 @@
+data/datasets/raw/
+data/datasets/processed/
+data/datasets/splits.json
+checkpoints/
+logs/
+results/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.wandb/
+wandb/
+*.egg-info/
+.env
+*.env

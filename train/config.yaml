@@ -1,0 +1,172 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# SAFE-HFT — Master Hyperparameter Configuration
+# All values used in code are read from this file. Nothing is hardcoded.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+data:
+  tickers:
+    - RELIANCE
+    - TCS
+    - INFY
+    - HDFCBANK
+    - ICICIBANK
+  start_date: "2021-01-01"
+  end_date:   "2023-12-31"
+  raw_dir:       "data/datasets/raw"
+  processed_dir: "data/datasets/processed"
+  splits_file:   "data/datasets/splits.json"
+
+  # Feature engineering windows
+  volatility_windows: [10, 30, 60]
+  rsi_window: 14
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  bollinger_window: 20
+  volume_ratio_window: 30
+
+  # Normalisation
+  norm_window: 60   # Rolling z-score look-back (bars)
+
+  # Train / val / test split fractions (by chronological order, never shuffled)
+  train_frac: 0.70
+  val_frac:   0.15
+  # test_frac is implied: 1.0 - train_frac - val_frac = 0.15
+
+# ── Regime Classifier ─────────────────────────────────────────────────────────
+regime:
+  window: 20
+  return_threshold: 0.001   # 0.1% 20-bar return — calibrated for NSE minute timescale
+  vol_threshold: null        # null = auto-compute as 75th percentile of training dist
+
+# ── Environment ───────────────────────────────────────────────────────────────
+env:
+  lookback_window: 20       # Bars of history in each observation (20 × N_features)
+  initial_capital: 1.0      # Normalised starting portfolio value
+  transaction_cost: 0.0003  # 0.03% per trade (one-way)
+  slippage_rate: 0.0001     # 0.01% × spread_proxy per trade
+  tick_size: 0.05           # NSE minimum price increment (INR)
+  session_minutes: 375      # Total NSE trading minutes per day
+  intraday_close_minute: 360  # Minute index after which positions are force-closed
+
+  # Circuit breaker thresholds (cumulative intraday return fractions)
+  circuit_thresholds: [0.05, 0.10, 0.20]
+
+  # Order book simulation
+  order_book_decay: 0.6     # Fraction of volume at best level
+
+# ── Agent (shared architecture settings) ──────────────────────────────────────
+agent:
+  seed: 42
+  device: "cpu"             # "cuda" if GPU available
+
+  # Policy network (LSTM + MLP)
+  lstm_hidden_size: 128
+  mlp_hidden_sizes: [256, 128]
+  activation: "tanh"
+
+  # Value / cost network (MLP only)
+  critic_hidden_sizes: [256, 256]
+
+# ── SAFE-HFT (Lagrangian PPO via OmniSafe) ───────────────────────────────────
+safe_hft:
+  # PPO hyperparameters
+  learning_rate: 3.0e-4
+  n_steps: 2048             # Steps per rollout buffer
+  batch_size: 64
+  n_epochs: 10              # PPO update epochs per rollout
+  gamma: 0.99               # Discount factor
+  gae_lambda: 0.95          # GAE λ
+  clip_range: 0.2           # PPO ε clipping
+  entropy_coef: 0.01
+  value_loss_coef: 0.5
+  max_grad_norm: 0.5
+
+  # Lagrangian-specific
+  cost_limit: 0.05          # d_i: max allowable violation rate per constraint
+  lagrange_multiplier_lr: 0.01   # α: multiplier update learning rate
+  lambda_init: 0.0          # Initial λ for all constraints
+
+# ── PPO Baseline (Stable-Baselines3) ─────────────────────────────────────────
+ppo_baseline:
+  learning_rate: 3.0e-4
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  policy: "MlpPolicy"
+
+# ── DQN Baseline (Stable-Baselines3) ─────────────────────────────────────────
+dqn_baseline:
+  learning_rate: 1.0e-4
+  batch_size: 32
+  buffer_size: 50000
+  learning_starts: 1000
+  gamma: 0.99
+  tau: 1.0                  # Target network update rate (hard update)
+  train_freq: 4
+  gradient_steps: 1
+  target_update_interval: 1000
+  exploration_fraction: 0.1
+  exploration_final_eps: 0.05
+  policy: "MlpPolicy"
+
+# ── EarnHFT-style Baseline ────────────────────────────────────────────────────
+earnhft_baseline:
+  high_level_interval: 10   # Bars between high-level agent decisions
+  high_level_lr: 1.0e-4
+  low_level_lr: 3.0e-4
+  gamma: 0.99
+
+# ── MacroHFT-style Baseline ───────────────────────────────────────────────────
+macrohft_baseline:
+  memory_buffer_len: 10     # Recent regime labels seen by hyper-agent
+  sub_agent_lr: 3.0e-4
+  hyper_agent_lr: 1.0e-4
+  gamma: 0.99
+
+# ── Safety Constraints ────────────────────────────────────────────────────────
+constraints:
+  # Constraint 1: Maximum drawdown
+  max_drawdown_threshold: 0.05   # Fraction of peak value
+
+  # Constraint 2: Position duration
+  duration_limit: 30             # Bars
+
+  # Constraint 3: Realised volatility
+  vol_window: 60                 # Rolling window (bars)
+  vol_multiplier: 2.0            # agent_vol must not exceed multiplier × market_vol
+
+# ── Training ──────────────────────────────────────────────────────────────────
+training:
+  total_steps: 1_000_000
+  eval_interval: 100_000        # Steps between validation runs
+  checkpoint_interval: 100_000  # Steps between checkpoint saves
+  checkpoint_dir: "checkpoints"
+  log_dir: "logs"
+  best_metric: "sharpe_ratio"   # Validation metric for checkpoint selection
+
+  # Weights & Biases
+  wandb_project: "safe-hft"
+  wandb_entity: null            # Set to your W&B username / team name
+
+# ── Evaluation ────────────────────────────────────────────────────────────────
+eval:
+  risk_free_rate: 0.0
+  output_dir: "results"
+  figures_dir: "results/figures"
+  tables_dir:  "results/tables"
+
+  # Figure style
+  figure_dpi: 300
+  single_col_width_in: 3.5
+  double_col_width_in: 7.16
+  font_size_axis_label: 10
+  font_size_tick_label: 9
+  font_size_legend: 8
