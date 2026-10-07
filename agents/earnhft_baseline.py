@@ -75,8 +75,8 @@ class _LowLevelWrapper(gym.Env):
         if self._step_in_interval >= self._env.config.get("high_level_interval", 10):
             self._step_in_interval = 0
             if self._hl_agent is not None:
-                aug_obs = self._augment(obs)
-                hl_action, _ = self._hl_agent.predict(aug_obs, deterministic=False)
+                # HL agent trained on base obs (290-dim), not augmented (293-dim)
+                hl_action, _ = self._hl_agent.predict(obs, deterministic=False)
                 self._current_signal = int(hl_action)
         return self._augment(obs), rew, term, trunc, info
 
